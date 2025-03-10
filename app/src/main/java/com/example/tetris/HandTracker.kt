@@ -374,19 +374,5 @@ class HandTracker(private val context: Context, private val callback: HandGestur
         // Right zone indicator (blue)
         zonePaint.color = Color.BLUE
         canvas.drawLine(rightZoneBoundary, 0f, rightZoneBoundary, height, zonePaint)
-        
-        // Zone labels
-        val textPaint = Paint().apply {
-            color = Color.WHITE
-            textSize = 30f
-            alpha = 100
-            textAlign = Paint.Align.CENTER
-        }
-        
-        // Draw labels at the top of the screen
-        val labelY = 50f
-        canvas.drawText("MOVE LEFT", leftZoneBoundary / 2, labelY, textPaint)
-        canvas.drawText("STAY", (leftZoneBoundary + rightZoneBoundary) / 2, labelY, textPaint)
-        canvas.drawText("MOVE RIGHT", rightZoneBoundary + (width - rightZoneBoundary) / 2, labelY, textPaint)
     }
 }

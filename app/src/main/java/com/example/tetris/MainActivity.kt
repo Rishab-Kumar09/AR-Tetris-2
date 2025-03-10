@@ -28,6 +28,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
     private lateinit var tetrisGrid: TetrisGrid
     private var lastHandResult: com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult? = null
     private val TAG = "MainActivity"
+    
+    // Touch control variables
+    private var lastTouchY: Float = 0f
+    private val SWIPE_THRESHOLD = 50f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +67,37 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
             resetGame()
         }
 
+        // Set up joystick control
+        binding.joystick.onJoystickMoved = { movement ->
+            if (::tetrisGrid.isInitialized) {
+                // Convert movement (-1 to 1) to the expected range (0 to 1)
+                val normalizedMovement = (movement + 1) / 2
+                tetrisGrid.handleFingerMovement(normalizedMovement, true)
+                drawOverlay()
+            }
+        }
+
+        // Set up control buttons
+        binding.rotateButton.setOnClickListener {
+            if (::tetrisGrid.isInitialized) {
+                tetrisGrid.handleHardDrop() // This is our rotate function
+                drawOverlay()
+            }
+        }
+
+        binding.dropButton.setOnClickListener {
+            if (::tetrisGrid.isInitialized) {
+                tetrisGrid.game.handleTwoFingerGesture() // This is our hard drop function
+                updateGameState()
+                drawOverlay()
+            }
+        }
+
+        // Set up the overlay for hand tracking visualization
+        binding.overlay.holder.addCallback(this)
+        binding.overlay.setZOrderMediaOverlay(true) // This ensures proper z-ordering
+        binding.overlay.holder.setFormat(android.graphics.PixelFormat.TRANSPARENT)
+
         // Request camera permissions
         if (allPermissionsGranted()) {
             Log.d(TAG, "All permissions granted, starting camera")
@@ -73,11 +108,6 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
                 this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
             )
         }
-
-        // Set up the overlay for hand tracking visualization
-        binding.overlay.holder.addCallback(this)
-        binding.overlay.setZOrderOnTop(true)
-        binding.overlay.holder.setFormat(android.graphics.PixelFormat.TRANSPARENT)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
@@ -228,8 +258,17 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
     private fun showGameOver(finalScore: Int) {
         Log.d(TAG, "showGameOver() called with score: $finalScore")
         runOnUiThread {
+            binding.gameOverOverlay.apply {
+                bringToFront() // Ensure overlay is on top
+                visibility = View.VISIBLE
+            }
             binding.finalScoreText.text = "Final Score: $finalScore"
-            binding.gameOverOverlay.visibility = View.VISIBLE
+            
+            // Make sure the reset button is clickable and on top
+            binding.resetButton.apply {
+                bringToFront()
+                isClickable = true
+            }
         }
     }
     
@@ -275,9 +314,6 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
             
             // Draw Tetris grid on top
             tetrisGrid.draw(canvas)
-            
-            // Update game state (score and check for game over)
-            updateGameState()
         } catch (e: Exception) {
             Log.e(TAG, "Error drawing overlay: ${e.message}")
         } finally {
@@ -287,6 +323,9 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
                 Log.e(TAG, "Error posting canvas: ${e.message}")
             }
         }
+        
+        // Update game state after drawing
+        updateGameState()
     }
 
     // HandTracker.HandGestureCallback implementation
