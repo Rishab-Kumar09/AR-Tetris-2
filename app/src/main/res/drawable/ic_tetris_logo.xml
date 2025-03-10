@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background -->
+    <path
+        android:fillColor="#2C3E50"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <!-- T piece (purple) -->
+    <path
+        android:fillColor="#9B59B6"
+        android:pathData="M30,30h15v15h-15z" />
+    <path
+        android:fillColor="#9B59B6"
+        android:pathData="M45,30h15v15h-15z" />
+    <path
+        android:fillColor="#9B59B6"
+        android:pathData="M60,30h15v15h-15z" />
+    <path
+        android:fillColor="#9B59B6"
+        android:pathData="M45,45h15v15h-15z" />
+
+    <!-- L piece (orange) -->
+    <path
+        android:fillColor="#E67E22"
+        android:pathData="M30,48h15v15h-15z" />
+    <path
+        android:fillColor="#E67E22"
+        android:pathData="M30,63h15v15h-15z" />
+    <path
+        android:fillColor="#E67E22"
+        android:pathData="M45,63h15v15h-15z" />
+
+    <!-- I piece (cyan) -->
+    <path
+        android:fillColor="#3498DB"
+        android:pathData="M63,48h15v15h-15z" />
+    <path
+        android:fillColor="#3498DB"
+        android:pathData="M63,63h15v15h-15z" />
+    <path
+        android:fillColor="#3498DB"
+        android:pathData="M63,33h15v15h-15z" />
+    <path
+        android:fillColor="#3498DB"
+        android:pathData="M63,78h15v15h-15z" />
+
+    <!-- Shine effects -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.2"
+        android:pathData="M30,30l5,-5h55l-5,5z" />
+</vector> 
