@@ -31,42 +31,67 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <com.example.tetris.JoystickView
-        android:id="@+id/joystick"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
+    <!-- Restart Button -->
+    <ImageButton
+        android:id="@+id/in_game_restart_button"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_margin="16dp"
+        android:background="#80000000"
+        android:src="@android:drawable/ic_menu_rotate"
+        android:padding="8dp"
+        android:scaleType="fitCenter"
         android:elevation="4dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        android:contentDescription="Restart Game"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <LinearLayout
-        android:id="@+id/controlArea"
-        android:layout_width="120dp"
-        android:layout_height="200dp"
-        android:layout_margin="16dp"
-        android:elevation="4dp"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+    <!-- Instructions Overlay -->
+    <FrameLayout
+        android:id="@+id/instructions_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E6000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="10dp">
 
-        <Button
-            android:id="@+id/rotateButton"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginBottom="8dp"
-            android:layout_weight="1"
-            android:alpha="0.8"
-            android:text="Rotate" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp">
 
-        <Button
-            android:id="@+id/dropButton"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:alpha="0.8"
-            android:text="Drop" />
-    </LinearLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="HOW TO PLAY"
+                android:textColor="@android:color/white"
+                android:textSize="36sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="24dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="✋ Hand Gesture Controls:\n\n• Point with index finger:\nMove piece left/right\n\n• Make a fist:\nRotate piece\n\n• Show two fingers (index + middle):\nHard drop piece"
+                android:textColor="@android:color/white"
+                android:textSize="24sp"
+                android:lineSpacingExtra="8dp"
+                android:gravity="center"
+                android:layout_marginBottom="32dp" />
+
+            <Button
+                android:id="@+id/start_game_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="START GAME"
+                android:textSize="24sp"
+                android:padding="16dp" />
+        </LinearLayout>
+    </FrameLayout>
 
     <!-- Game Over Overlay -->
     <FrameLayout

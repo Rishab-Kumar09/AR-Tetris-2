@@ -127,6 +127,16 @@ class TetrisGrid(
         return currentScore
     }
     
+    // Save game state
+    fun saveState(): TetrisGame.GameState {
+        return game.saveState()
+    }
+    
+    // Restore game state
+    fun restoreState(state: TetrisGame.GameState) {
+        game.restoreState(state)
+    }
+    
     // Reset the game
     fun reset() {
         game.reset()

@@ -67,30 +67,14 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
             resetGame()
         }
 
-        // Set up joystick control
-        binding.joystick.onJoystickMoved = { movement ->
-            if (::tetrisGrid.isInitialized) {
-                // Convert movement (-1 to 1) to the expected range (0 to 1)
-                val normalizedMovement = (movement + 1) / 2
-                tetrisGrid.handleFingerMovement(normalizedMovement, true)
-                drawOverlay()
-            }
+        // Set up start game button click listener
+        binding.startGameButton.setOnClickListener {
+            startGame()
         }
 
-        // Set up control buttons
-        binding.rotateButton.setOnClickListener {
-            if (::tetrisGrid.isInitialized) {
-                tetrisGrid.handleHardDrop() // This is our rotate function
-                drawOverlay()
-            }
-        }
-
-        binding.dropButton.setOnClickListener {
-            if (::tetrisGrid.isInitialized) {
-                tetrisGrid.game.handleTwoFingerGesture() // This is our hard drop function
-                updateGameState()
-                drawOverlay()
-            }
+        // Set up in-game restart button click listener
+        binding.inGameRestartButton.setOnClickListener {
+            showRestartConfirmation()
         }
 
         // Set up the overlay for hand tracking visualization
@@ -110,6 +94,92 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (::tetrisGrid.isInitialized) {
+            val gameState = tetrisGrid.saveState()
+            outState.putParcelable("game_state", GameStateParcelable(gameState))
+        }
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        if (::tetrisGrid.isInitialized) {
+            val gameStateParcelable = savedInstanceState.getParcelable<GameStateParcelable>("game_state")
+            gameStateParcelable?.let {
+                tetrisGrid.restoreState(it.toGameState())
+                updateGameState()
+            }
+        }
+    }
+
+    // Parcelable wrapper for game state
+    class GameStateParcelable(private val gameState: TetrisGame.GameState) : android.os.Parcelable {
+        constructor(parcel: android.os.Parcel) : this(
+            TetrisGame.GameState(
+                grid = Array(TetrisGame.GRID_HEIGHT) { IntArray(TetrisGame.GRID_WIDTH) }.apply {
+                    for (i in 0 until TetrisGame.GRID_HEIGHT) {
+                        for (j in 0 until TetrisGame.GRID_WIDTH) {
+                            this[i][j] = parcel.readInt()
+                        }
+                    }
+                },
+                score = parcel.readInt(),
+                isGameOver = parcel.readInt() == 1,
+                isPaused = parcel.readInt() == 1,
+                currentPieceState = if (parcel.readInt() == 1) {
+                    TetrisGame.CurrentPieceState(
+                        type = TetriminoType.values()[parcel.readInt()],
+                        rotation = parcel.readInt(),
+                        x = parcel.readInt(),
+                        y = parcel.readInt()
+                    )
+                } else null,
+                nextPieceType = TetriminoType.values()[parcel.readInt()]
+            )
+        )
+
+        override fun writeToParcel(parcel: android.os.Parcel, flags: Int) {
+            // Write grid
+            for (row in gameState.grid) {
+                for (cell in row) {
+                    parcel.writeInt(cell)
+                }
+            }
+            
+            // Write other state
+            parcel.writeInt(gameState.score)
+            parcel.writeInt(if (gameState.isGameOver) 1 else 0)
+            parcel.writeInt(if (gameState.isPaused) 1 else 0)
+            
+            // Write current piece state
+            parcel.writeInt(if (gameState.currentPieceState != null) 1 else 0)
+            gameState.currentPieceState?.let {
+                parcel.writeInt(it.type.ordinal)
+                parcel.writeInt(it.rotation)
+                parcel.writeInt(it.x)
+                parcel.writeInt(it.y)
+            }
+            
+            // Write next piece type
+            parcel.writeInt(gameState.nextPieceType.ordinal)
+        }
+
+        override fun describeContents(): Int = 0
+
+        fun toGameState(): TetrisGame.GameState = gameState
+
+        companion object CREATOR : android.os.Parcelable.Creator<GameStateParcelable> {
+            override fun createFromParcel(parcel: android.os.Parcel): GameStateParcelable {
+                return GameStateParcelable(parcel)
+            }
+
+            override fun newArray(size: Int): Array<GameStateParcelable?> {
+                return arrayOfNulls(size)
+            }
+        }
     }
 
     // Also handle immersive mode for when the user swipes from edge
@@ -221,9 +291,11 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
         Log.d(TAG, "surfaceChanged() called: width=$width, height=$height")
         // Initialize tetrisGrid when surface dimensions are known
-        tetrisGrid = TetrisGrid(width, height)
-        // Start the Tetris game
-        tetrisGrid.start()
+        if (!::tetrisGrid.isInitialized) {
+            tetrisGrid = TetrisGrid(width, height)
+            // Show instructions overlay for new game
+            binding.instructionsOverlay.visibility = View.VISIBLE
+        }
         // Draw any existing hand tracking results
         drawOverlay()
     }
@@ -272,14 +344,53 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
         }
     }
     
-    // Reset the game and hide game over screen
+    // Show confirmation dialog before restarting
+    private fun showRestartConfirmation() {
+        // Pause the game while showing dialog
+        if (::tetrisGrid.isInitialized) {
+            tetrisGrid.game.isPaused = true
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Restart Game")
+            .setMessage("Are you sure you want to restart? Current progress will be lost.")
+            .setPositiveButton("Restart") { _, _ ->
+                resetGame()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                // Resume the game
+                if (::tetrisGrid.isInitialized) {
+                    tetrisGrid.game.isPaused = false
+                }
+                dialog.dismiss()
+            }
+            .setOnCancelListener {
+                // Resume the game if dialog is dismissed
+                if (::tetrisGrid.isInitialized) {
+                    tetrisGrid.game.isPaused = false
+                }
+            }
+            .show()
+    }
+
+    // Reset the game and show instructions
     private fun resetGame() {
         if (::tetrisGrid.isInitialized) {
             tetrisGrid.reset()
             binding.fingerCountText.text = "Score: 0"
             binding.gameOverOverlay.visibility = View.GONE
-            tetrisGrid.start()
+            binding.instructionsOverlay.visibility = View.VISIBLE
+            binding.inGameRestartButton.visibility = View.GONE
             Log.d(TAG, "Game reset, score display reset to 0")
+        }
+    }
+
+    // Start the game and hide instructions
+    private fun startGame() {
+        binding.instructionsOverlay.visibility = View.GONE
+        binding.inGameRestartButton.visibility = View.VISIBLE
+        if (::tetrisGrid.isInitialized) {
+            tetrisGrid.start()
         }
     }
 
@@ -382,6 +493,15 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
             } finally {
                 imageProxy.close()
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // If we have a saved state, the game will be restored via onRestoreInstanceState
+        // If not, the instructions overlay will be shown when tetrisGrid is initialized
+        if (::tetrisGrid.isInitialized) {
+            drawOverlay()
         }
     }
 

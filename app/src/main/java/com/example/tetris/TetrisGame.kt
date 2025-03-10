@@ -25,7 +25,7 @@ class TetrisGame(private val width: Int, private val height: Int) {
     }
     
     // The game grid now stores the colors instead of just binary occupied state
-    private val grid = Array(GRID_HEIGHT) { Array(GRID_WIDTH) { 0 } }
+    private val grid = Array(GRID_HEIGHT) { IntArray(GRID_WIDTH) }
     
     // Current and next pieces
     private var currentPiece: Tetrimino? = null
@@ -66,6 +66,70 @@ class TetrisGame(private val width: Int, private val height: Int) {
             _score = value
             Log.d("TetrisGame", "Score changed from $oldScore to $_score")
         }
+    
+    // Save game state
+    fun saveState(): GameState {
+        // Convert grid to Array<IntArray>
+        val savedGrid = Array(GRID_HEIGHT) { i ->
+            grid[i].clone()
+        }
+        
+        return GameState(
+            grid = savedGrid,
+            score = _score,
+            isGameOver = isGameOver,
+            isPaused = isPaused,
+            currentPieceState = currentPiece?.let { CurrentPieceState(it.type, it.rotation, it.x, it.y) },
+            nextPieceType = nextPiece.type
+        )
+    }
+    
+    // Restore game state
+    fun restoreState(state: GameState) {
+        // Restore grid
+        for (i in state.grid.indices) {
+            grid[i] = state.grid[i].clone()
+        }
+        
+        // Restore score and game state
+        _score = state.score
+        isGameOver = state.isGameOver
+        isPaused = state.isPaused
+        
+        // Restore current piece if it exists
+        currentPiece = state.currentPieceState?.let { pieceState ->
+            Tetrimino(pieceState.type).apply {
+                rotation = pieceState.rotation
+                x = pieceState.x
+                y = pieceState.y
+            }
+        }
+        
+        // Restore next piece
+        nextPiece = Tetrimino(state.nextPieceType)
+        
+        // If game is not paused, restart the game loop
+        if (!isPaused && !isGameOver) {
+            handler.post(gameLoopRunnable)
+        }
+    }
+    
+    // Data classes for state preservation
+    data class GameState(
+        val grid: Array<IntArray>,
+        val score: Int,
+        val isGameOver: Boolean,
+        val isPaused: Boolean,
+        val currentPieceState: CurrentPieceState?,
+        val nextPieceType: TetriminoType
+    )
+    
+    data class CurrentPieceState(
+        val type: TetriminoType,
+        val rotation: Int,
+        val x: Int,
+        val y: Int
+    )
     
     // Getter for next piece (for preview)
     fun getNextPiece(): Tetrimino {
@@ -289,11 +353,11 @@ class TetrisGame(private val width: Int, private val height: Int) {
         Log.d("TetrisGame", "Clearing row $row")
         // Move all rows above down
         for (i in row downTo 1) {
-            grid[i] = grid[i - 1].copyOf()
+            grid[i] = grid[i - 1].clone()
         }
         
         // Clear the top row
-        grid[0] = Array(GRID_WIDTH) { 0 }
+        grid[0] = IntArray(GRID_WIDTH)
     }
     
     // Check if the piece can move to the specified position
