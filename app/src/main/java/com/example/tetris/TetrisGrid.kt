@@ -4,6 +4,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
+import android.util.Log
 
 class TetrisGrid(
     private val screenWidth: Int,
@@ -119,19 +120,29 @@ class TetrisGrid(
         nextPiece.drawPreview(canvas, offsetX, offsetY, previewCellSize)
     }
     
-    // Start the game
-    fun start() {
-        game.start()
-    }
-    
-    // Pause the game
-    fun pause() {
-        game.pause()
+    // Get current score
+    fun getScore(): Int {
+        val currentScore = game.score
+        Log.d("TetrisGrid", "getScore() called, returning: $currentScore")
+        return currentScore
     }
     
     // Reset the game
     fun reset() {
         game.reset()
+        Log.d("TetrisGrid", "Game reset, score reset to 0")
+    }
+    
+    // Start the game
+    fun start() {
+        game.start()
+        Log.d("TetrisGrid", "Game started")
+    }
+    
+    // Pause the game
+    fun pause() {
+        game.pause()
+        Log.d("TetrisGrid", "Game paused")
     }
     
     // Handle pointer finger movement
@@ -147,10 +158,5 @@ class TetrisGrid(
     // Handle two-finger gesture for rotation
     fun handleTwoFingerRotation() {
         game.handleTwoFingerGesture()
-    }
-    
-    // Get current score
-    fun getScore(): Int {
-        return game.score
     }
 } 

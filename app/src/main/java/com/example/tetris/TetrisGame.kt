@@ -52,13 +52,19 @@ class TetrisGame(private val width: Int, private val height: Int) {
         alpha = 220 // 86% opacity for outlines
     }
     
-    // Game state
+    // Game state and score handling
     var isGameOver = false
     var isPaused = false
-    var score = 0
+    private var _score = 0
+    var score: Int
         get() {
-            Log.d("TetrisGame", "getScore() called, returning: $field")
-            return field
+            Log.d("TetrisGame", "Score accessed: $_score")
+            return _score
+        }
+        private set(value) {
+            val oldScore = _score
+            _score = value
+            Log.d("TetrisGame", "Score changed from $oldScore to $_score")
         }
     
     // Getter for next piece (for preview)
@@ -139,7 +145,8 @@ class TetrisGame(private val width: Int, private val height: Int) {
         
         isGameOver = false
         isPaused = true
-        score = 0  // Reset score
+        score = 0  // Reset score using the property setter
+        Log.d("TetrisGame", "Game reset - Score reset to 0")
         
         // Reset pieces
         currentPiece = null
@@ -243,20 +250,24 @@ class TetrisGame(private val width: Int, private val height: Int) {
         var rowsCleared = 0
         Log.d("TetrisGame", "Starting to check for completed rows. Current score: $score")
         
+        // First, find all completed rows
+        val completedRows = mutableListOf<Int>()
         for (i in grid.indices) {
             if (isRowComplete(i)) {
                 Log.d("TetrisGame", "Found complete row at index: $i")
-                clearRow(i)
+                completedRows.add(i)
                 rowsCleared++
             }
         }
         
-        // Update score based on rows cleared
+        // Then clear them from bottom to top
+        completedRows.sortedDescending().forEach { row ->
+            clearRow(row)
+        }
+        
+        // Update score if any rows were cleared
         if (rowsCleared > 0) {
-            val scoreIncrease = scoreValues[rowsCleared] ?: (rowsCleared * 100)
-            val oldScore = score
-            score += scoreIncrease
-            Log.d("TetrisGame", "Cleared $rowsCleared rows. Score changed from $oldScore to $score (increase: $scoreIncrease)")
+            updateScore(rowsCleared)
         } else {
             Log.d("TetrisGame", "No rows cleared")
         }
@@ -446,5 +457,13 @@ class TetrisGame(private val width: Int, private val height: Int) {
                 lastHardDropTime = currentTime
             }
         }
+    }
+    
+    // Function to update score
+    private fun updateScore(rowsCleared: Int) {
+        val scoreIncrease = scoreValues[rowsCleared] ?: (rowsCleared * 100)
+        val oldScore = score
+        score = oldScore + scoreIncrease
+        Log.d("TetrisGame", "Score updated - Rows cleared: $rowsCleared, Score increase: $scoreIncrease, New score: $score")
     }
 } 

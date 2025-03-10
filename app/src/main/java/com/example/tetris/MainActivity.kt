@@ -209,8 +209,13 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
             val oldText = binding.fingerCountText.text.toString()
             val score = tetrisGrid.getScore()
             val newText = "Score: $score"
-            Log.d("MainActivity", "updateGameState() called. Old text: $oldText, New text: $newText")
-            binding.fingerCountText.text = newText
+            Log.d(TAG, "updateGameState() called. Old text: $oldText, New text: $newText")
+            
+            // Only update if the score has changed
+            if (oldText != newText) {
+                binding.fingerCountText.text = newText
+                Log.d(TAG, "Score display updated to: $score")
+            }
             
             // Check for game over
             if (tetrisGrid.game.isGameOver) {
@@ -221,7 +226,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
     
     // Show game over screen with final score
     private fun showGameOver(finalScore: Int) {
-        Log.d("MainActivity", "showGameOver() called with score: $finalScore")
+        Log.d(TAG, "showGameOver() called with score: $finalScore")
         runOnUiThread {
             binding.finalScoreText.text = "Final Score: $finalScore"
             binding.gameOverOverlay.visibility = View.VISIBLE
@@ -232,8 +237,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
     private fun resetGame() {
         if (::tetrisGrid.isInitialized) {
             tetrisGrid.reset()
-            tetrisGrid.start()
+            binding.fingerCountText.text = "Score: 0"
             binding.gameOverOverlay.visibility = View.GONE
+            tetrisGrid.start()
+            Log.d(TAG, "Game reset, score display reset to 0")
         }
     }
 
