@@ -29,6 +29,14 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
     private var lastHandResult: com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult? = null
     private val TAG = "MainActivity"
     
+    // Constants for SharedPreferences
+    companion object {
+        private const val PREFS_NAME = "TetrisPrefs"
+        private const val HIGH_SCORE_KEY = "high_score"
+        private const val REQUEST_CODE_PERMISSIONS = 10
+        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+    }
+    
     // Touch control variables
     private var lastTouchY: Float = 0f
     private val SWIPE_THRESHOLD = 50f
@@ -127,6 +135,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
                     }
                 },
                 score = parcel.readInt(),
+                highScore = parcel.readInt(),
                 isGameOver = parcel.readInt() == 1,
                 isPaused = parcel.readInt() == 1,
                 currentPieceState = if (parcel.readInt() == 1) {
@@ -151,6 +160,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
             
             // Write other state
             parcel.writeInt(gameState.score)
+            parcel.writeInt(gameState.highScore)
             parcel.writeInt(if (gameState.isGameOver) 1 else 0)
             parcel.writeInt(if (gameState.isPaused) 1 else 0)
             
@@ -293,6 +303,10 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
         // Initialize tetrisGrid when surface dimensions are known
         if (!::tetrisGrid.isInitialized) {
             tetrisGrid = TetrisGrid(width, height)
+            // Load the saved high score
+            val savedHighScore = loadHighScore()
+            tetrisGrid.game.setHighScore(savedHighScore)
+            Log.d(TAG, "Initialized game with saved high score: $savedHighScore")
             // Show instructions overlay for new game
             binding.instructionsOverlay.visibility = View.VISIBLE
         }
@@ -326,15 +340,47 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
         }
     }
     
+    // Reset the game and show instructions
+    private fun resetGame() {
+        if (::tetrisGrid.isInitialized) {
+            tetrisGrid.reset()
+            // Load the saved high score when resetting
+            val savedHighScore = loadHighScore()
+            tetrisGrid.game.setHighScore(savedHighScore)
+            binding.fingerCountText.text = "Score: 0"
+            binding.gameOverOverlay.visibility = View.GONE
+            binding.instructionsOverlay.visibility = View.VISIBLE
+            binding.inGameRestartButton.visibility = View.GONE
+            Log.d(TAG, "Game reset, score display reset to 0, high score loaded: $savedHighScore")
+        }
+    }
+
+    // Load high score from SharedPreferences
+    private fun loadHighScore(): Int {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val highScore = prefs.getInt(HIGH_SCORE_KEY, 0)
+        Log.d(TAG, "Loaded high score from preferences: $highScore")
+        return highScore
+    }
+
+    // Save high score to SharedPreferences
+    private fun saveHighScore(score: Int) {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        prefs.edit().putInt(HIGH_SCORE_KEY, score).apply()
+        Log.d(TAG, "High score saved to preferences: $score")
+    }
+
     // Show game over screen with final score
     private fun showGameOver(finalScore: Int) {
         Log.d(TAG, "showGameOver() called with score: $finalScore")
+        // Save high score when game is over
+        saveHighScore(finalScore)
         runOnUiThread {
             binding.gameOverOverlay.apply {
                 bringToFront() // Ensure overlay is on top
                 visibility = View.VISIBLE
             }
-            binding.finalScoreText.text = "Final Score: $finalScore"
+            binding.finalScoreText.text = "Final Score: $finalScore\nHigh Score: ${tetrisGrid.game.highScore}"
             
             // Make sure the reset button is clickable and on top
             binding.resetButton.apply {
@@ -371,18 +417,6 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
                 }
             }
             .show()
-    }
-
-    // Reset the game and show instructions
-    private fun resetGame() {
-        if (::tetrisGrid.isInitialized) {
-            tetrisGrid.reset()
-            binding.fingerCountText.text = "Score: 0"
-            binding.gameOverOverlay.visibility = View.GONE
-            binding.instructionsOverlay.visibility = View.VISIBLE
-            binding.inGameRestartButton.visibility = View.GONE
-            Log.d(TAG, "Game reset, score display reset to 0")
-        }
     }
 
     // Start the game and hide instructions
@@ -496,17 +530,23 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback, HandTracker.Ha
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Save high score when app is paused
+        if (::tetrisGrid.isInitialized) {
+            saveHighScore(tetrisGrid.game.highScore)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         // If we have a saved state, the game will be restored via onRestoreInstanceState
         // If not, the instructions overlay will be shown when tetrisGrid is initialized
         if (::tetrisGrid.isInitialized) {
+            // Load high score when resuming
+            val savedHighScore = loadHighScore()
+            tetrisGrid.game.setHighScore(savedHighScore)
             drawOverlay()
         }
-    }
-
-    companion object {
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 }

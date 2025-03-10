@@ -41,7 +41,7 @@ class TetrisGame(private val width: Int, private val height: Int) {
     // Paint for drawing locked pieces
     private val lockedPiecePaint = Paint().apply {
         style = Paint.Style.FILL
-        alpha = 160  // About 63% opacity - slightly more transparent than active pieces
+        alpha = 255  // Full opacity for locked pieces
     }
     
     // Paint for block outlines
@@ -51,11 +51,46 @@ class TetrisGame(private val width: Int, private val height: Int) {
         strokeWidth = Tetrimino.OUTLINE_WIDTH
         alpha = 220 // 86% opacity for outlines
     }
+
+    // Paint for main color (brighter)
+    private val mainPaint = Paint().apply {
+        style = Paint.Style.FILL
+        alpha = 255 // Full opacity
+    }
+
+    // Paint for top highlight
+    private val topHighlightPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        alpha = 102 // 40% opacity
+    }
+
+    // Paint for left highlight
+    private val leftHighlightPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        alpha = 102 // 40% opacity
+    }
+
+    // Paint for glossy effect
+    private val glossPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        alpha = 64 // 25% opacity
+    }
+
+    // Paint for shadow edges
+    private val shadowEdgePaint = Paint().apply {
+        color = Color.BLACK
+        style = Paint.Style.FILL
+        alpha = 77 // 30% opacity
+    }
     
     // Game state and score handling
     var isGameOver = false
     var isPaused = false
     private var _score = 0
+    private var _highScore = 0
     var score: Int
         get() {
             Log.d("TetrisGame", "Score accessed: $_score")
@@ -64,8 +99,23 @@ class TetrisGame(private val width: Int, private val height: Int) {
         private set(value) {
             val oldScore = _score
             _score = value
+            if (_score > _highScore) {
+                _highScore = _score
+                Log.d("TetrisGame", "New high score: $_highScore")
+            }
             Log.d("TetrisGame", "Score changed from $oldScore to $_score")
         }
+    
+    val highScore: Int
+        get() = _highScore
+
+    // Method to set high score from outside (for persistence)
+    fun setHighScore(value: Int) {
+        if (value > _highScore) {
+            _highScore = value
+            Log.d("TetrisGame", "High score set to: $_highScore")
+        }
+    }
     
     // Save game state
     fun saveState(): GameState {
@@ -77,6 +127,7 @@ class TetrisGame(private val width: Int, private val height: Int) {
         return GameState(
             grid = savedGrid,
             score = _score,
+            highScore = _highScore,
             isGameOver = isGameOver,
             isPaused = isPaused,
             currentPieceState = currentPiece?.let { CurrentPieceState(it.type, it.rotation, it.x, it.y) },
@@ -93,6 +144,7 @@ class TetrisGame(private val width: Int, private val height: Int) {
         
         // Restore score and game state
         _score = state.score
+        _highScore = state.highScore
         isGameOver = state.isGameOver
         isPaused = state.isPaused
         
@@ -118,6 +170,7 @@ class TetrisGame(private val width: Int, private val height: Int) {
     data class GameState(
         val grid: Array<IntArray>,
         val score: Int,
+        val highScore: Int,
         val isGameOver: Boolean,
         val isPaused: Boolean,
         val currentPieceState: CurrentPieceState?,
@@ -210,7 +263,8 @@ class TetrisGame(private val width: Int, private val height: Int) {
         isGameOver = false
         isPaused = true
         score = 0  // Reset score using the property setter
-        Log.d("TetrisGame", "Game reset - Score reset to 0")
+        // Note: We don't reset the high score here anymore
+        Log.d("TetrisGame", "Game reset - Score reset to 0, high score preserved: $_highScore")
         
         // Reset pieces
         currentPiece = null
@@ -402,11 +456,70 @@ class TetrisGame(private val width: Int, private val height: Int) {
                     val right = left + cellWidth
                     val bottom = top + cellHeight
                     
-                    // Draw occupied cells with their original colors
-                    lockedPiecePaint.color = grid[i][j]
+                    // Get base color (darker version)
+                    val baseColor = grid[i][j]
+                    val mainColor = when {
+                        baseColor == Color.rgb(0, 183, 183) -> Color.rgb(0, 255, 255)   // Cyan
+                        baseColor == Color.rgb(0, 0, 183) -> Color.rgb(0, 0, 255)       // Blue
+                        baseColor == Color.rgb(183, 91, 0) -> Color.rgb(255, 127, 0)    // Orange
+                        baseColor == Color.rgb(183, 183, 0) -> Color.rgb(255, 255, 0)   // Yellow
+                        baseColor == Color.rgb(0, 183, 0) -> Color.rgb(0, 255, 0)       // Green
+                        baseColor == Color.rgb(142, 68, 173) -> Color.rgb(155, 89, 182) // Purple
+                        baseColor == Color.rgb(183, 0, 0) -> Color.rgb(255, 0, 0)       // Red
+                        else -> baseColor
+                    }
+                    
+                    // Draw base (darker) color
+                    lockedPiecePaint.color = baseColor
                     canvas.drawRect(left, top, right, bottom, lockedPiecePaint)
                     
-                    // Draw block outlines
+                    // Draw main (brighter) color slightly inset
+                    mainPaint.color = mainColor
+                    canvas.drawRect(
+                        left + 1,
+                        top + 1,
+                        right - 1,
+                        bottom - 1,
+                        mainPaint
+                    )
+                    
+                    // Draw top highlight
+                    canvas.drawRect(
+                        left + 1,
+                        top,
+                        right - 1,
+                        top + 1,
+                        topHighlightPaint
+                    )
+                    
+                    // Draw left highlight
+                    canvas.drawRect(
+                        left,
+                        top + 1,
+                        left + 1,
+                        bottom - 1,
+                        leftHighlightPaint
+                    )
+                    
+                    // Draw glossy effect on top half
+                    canvas.drawRect(
+                        left + 2,
+                        top + 2,
+                        right - 2,
+                        top + (bottom - top) / 2,
+                        glossPaint
+                    )
+                    
+                    // Draw right shadow edge
+                    canvas.drawRect(
+                        right - 1,
+                        top + 1,
+                        right,
+                        bottom - 1,
+                        shadowEdgePaint
+                    )
+                    
+                    // Draw block outline
                     canvas.drawRect(left, top, right, bottom, outlinePaint)
                 }
             }

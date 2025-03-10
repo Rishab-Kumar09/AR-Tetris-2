@@ -31,8 +31,9 @@ class Tetrimino(val type: TetriminoType) {
                 intArrayOf(0, 0, 0)
             ),
             TetriminoType.O to arrayOf(
-                intArrayOf(1, 1),
-                intArrayOf(1, 1)
+                intArrayOf(0, 0, 0),
+                intArrayOf(0, 1, 1),
+                intArrayOf(0, 1, 1)
             ),
             TetriminoType.S to arrayOf(
                 intArrayOf(0, 1, 1),
@@ -51,19 +52,30 @@ class Tetrimino(val type: TetriminoType) {
             )
         )
 
-        // Colors for each type - using authentic Tetris colors
+        // Colors for each type - using authentic Tetris colors with darker variants
         private val COLORS = mapOf(
-            TetriminoType.I to Color.rgb(0, 255, 255),   // Cyan (#00FFFF)
-            TetriminoType.J to Color.rgb(0, 0, 255),     // Blue (#0000FF)
-            TetriminoType.L to Color.rgb(255, 127, 0),   // Orange (#FF7F00)
-            TetriminoType.O to Color.rgb(255, 255, 0),   // Yellow (#FFFF00)
-            TetriminoType.S to Color.rgb(0, 255, 0),     // Green (#00FF00)
-            TetriminoType.T to Color.rgb(128, 0, 128),   // Purple (#800080)
-            TetriminoType.Z to Color.rgb(255, 0, 0)      // Red (#FF0000)
+            TetriminoType.I to Color.rgb(0, 183, 183),   // Darker Cyan
+            TetriminoType.J to Color.rgb(0, 0, 183),     // Darker Blue
+            TetriminoType.L to Color.rgb(183, 91, 0),    // Darker Orange
+            TetriminoType.O to Color.rgb(255, 191, 0),   // Golden Yellow
+            TetriminoType.S to Color.rgb(0, 183, 0),     // Darker Green
+            TetriminoType.T to Color.rgb(142, 68, 173),  // Darker Purple (#8E44AD)
+            TetriminoType.Z to Color.rgb(183, 0, 0)      // Darker Red
+        )
+
+        // Main colors for each type (brighter version)
+        private val MAIN_COLORS = mapOf(
+            TetriminoType.I to Color.rgb(0, 255, 255),   // Cyan
+            TetriminoType.J to Color.rgb(0, 0, 255),     // Blue
+            TetriminoType.L to Color.rgb(255, 127, 0),   // Orange
+            TetriminoType.O to Color.rgb(255, 255, 64),  // Bright Lemon Yellow
+            TetriminoType.S to Color.rgb(0, 255, 0),     // Green
+            TetriminoType.T to Color.rgb(155, 89, 182),  // Purple (#9B59B6)
+            TetriminoType.Z to Color.rgb(255, 0, 0)      // Red
         )
         
         // Transparency level for all pieces (0-255)
-        const val PIECE_ALPHA = 180 // About 70% opacity
+        const val PIECE_ALPHA = 255 // Full opacity for main piece
         
         // Shadow transparency
         const val SHADOW_ALPHA = 80 // About 31% opacity
@@ -87,17 +99,20 @@ class Tetrimino(val type: TetriminoType) {
     // Current shape matrix (based on type and rotation)
     private var shape = SHAPES[type]!!
 
-    // Color of this Tetrimino
+    // Base color (darker) of this Tetrimino
     val color = COLORS[type]!!
+    
+    // Main color (brighter) of this Tetrimino
+    private val mainColor = MAIN_COLORS[type]!!
     
     // Shadow paint for the drop preview
     private val shadowPaint = Paint().apply {
-        color = this@Tetrimino.color
+        color = this@Tetrimino.mainColor
         style = Paint.Style.FILL
         alpha = SHADOW_ALPHA
     }
     
-    // Outline paint for block edges
+    // Paint for block outlines
     private val outlinePaint = Paint().apply {
         color = Color.BLACK
         style = Paint.Style.STROKE
@@ -105,11 +120,46 @@ class Tetrimino(val type: TetriminoType) {
         alpha = 220 // 86% opacity for outlines
     }
 
-    // Paint for drawing
-    private val paint = Paint().apply {
+    // Paint for base color (darker)
+    private val basePaint = Paint().apply {
         color = this@Tetrimino.color
         style = Paint.Style.FILL
         alpha = PIECE_ALPHA
+    }
+
+    // Paint for main color (brighter)
+    private val mainPaint = Paint().apply {
+        color = this@Tetrimino.mainColor
+        style = Paint.Style.FILL
+        alpha = PIECE_ALPHA
+    }
+
+    // Paint for top highlight
+    private val topHighlightPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        alpha = 102 // 40% opacity
+    }
+
+    // Paint for left highlight
+    private val leftHighlightPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        alpha = 102 // 40% opacity
+    }
+
+    // Paint for glossy effect
+    private val glossPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        alpha = 64 // 25% opacity
+    }
+
+    // Paint for shadow edges
+    private val shadowEdgePaint = Paint().apply {
+        color = Color.BLACK
+        style = Paint.Style.FILL
+        alpha = 77 // 30% opacity
     }
 
     // Get current shape based on rotation
@@ -191,8 +241,53 @@ class Tetrimino(val type: TetriminoType) {
                     val right = left + cellWidth
                     val bottom = top + cellHeight
                     
-                    // Draw block fill
-                    canvas.drawRect(left, top, right, bottom, paint)
+                    // Draw base (darker) color
+                    canvas.drawRect(left, top, right, bottom, basePaint)
+                    
+                    // Draw main (brighter) color slightly inset
+                    canvas.drawRect(
+                        left + 1,
+                        top + 1,
+                        right - 1,
+                        bottom - 1,
+                        mainPaint
+                    )
+                    
+                    // Draw top highlight
+                    canvas.drawRect(
+                        left + 1,
+                        top,
+                        right - 1,
+                        top + 1,
+                        topHighlightPaint
+                    )
+                    
+                    // Draw left highlight
+                    canvas.drawRect(
+                        left,
+                        top + 1,
+                        left + 1,
+                        bottom - 1,
+                        leftHighlightPaint
+                    )
+                    
+                    // Draw glossy effect on top half
+                    canvas.drawRect(
+                        left + 2,
+                        top + 2,
+                        right - 2,
+                        top + (bottom - top) / 2,
+                        glossPaint
+                    )
+                    
+                    // Draw right shadow edge
+                    canvas.drawRect(
+                        right - 1,
+                        top + 1,
+                        right,
+                        bottom - 1,
+                        shadowEdgePaint
+                    )
                     
                     // Draw block outline
                     canvas.drawRect(left, top, right, bottom, outlinePaint)
@@ -201,7 +296,7 @@ class Tetrimino(val type: TetriminoType) {
         }
     }
     
-    // Draw the tetrimino in the preview box
+    // Draw the tetrimino in the preview box with the same effects
     fun drawPreview(canvas: Canvas, offsetX: Float, offsetY: Float, cellSize: Float) {
         val currentShape = getShape()
         
@@ -213,8 +308,53 @@ class Tetrimino(val type: TetriminoType) {
                     val right = left + cellSize
                     val bottom = top + cellSize
                     
-                    // Draw block fill
-                    canvas.drawRect(left, top, right, bottom, paint)
+                    // Draw base (darker) color
+                    canvas.drawRect(left, top, right, bottom, basePaint)
+                    
+                    // Draw main (brighter) color slightly inset
+                    canvas.drawRect(
+                        left + 1,
+                        top + 1,
+                        right - 1,
+                        bottom - 1,
+                        mainPaint
+                    )
+                    
+                    // Draw top highlight
+                    canvas.drawRect(
+                        left + 1,
+                        top,
+                        right - 1,
+                        top + 1,
+                        topHighlightPaint
+                    )
+                    
+                    // Draw left highlight
+                    canvas.drawRect(
+                        left,
+                        top + 1,
+                        left + 1,
+                        bottom - 1,
+                        leftHighlightPaint
+                    )
+                    
+                    // Draw glossy effect on top half
+                    canvas.drawRect(
+                        left + 2,
+                        top + 2,
+                        right - 2,
+                        top + (bottom - top) / 2,
+                        glossPaint
+                    )
+                    
+                    // Draw right shadow edge
+                    canvas.drawRect(
+                        right - 1,
+                        top + 1,
+                        right,
+                        bottom - 1,
+                        shadowEdgePaint
+                    )
                     
                     // Draw block outline
                     canvas.drawRect(left, top, right, bottom, outlinePaint)
